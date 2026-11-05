@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manpower Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a111d;--p:#111b2b;--p2:#17233a;--ink:#e8eef8;--mute:#8393ad;--line:#243452;--eng:#f28c28;--tech:#f5c518;--clean:#5aa9ff;--ok:#2fbf80;--bad:#e5484d;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root[data-theme=daylight]{--bg:#e9eef5;--p:#fff;--p2:#f4f7fb;--ink:#13203a;--mute:#5d6b84;--line:#d3dbe8}
+:root[data-theme=graphite]{--bg:#141414;--p:#1e1e1f;--p2:#272728;--ink:#f1f1f1;--mute:#9a9a9a;--line:#383839}
+:root[data-theme=ocean]{--bg:#06232b;--p:#0b333d;--p2:#10424e;--ink:#e6f6f8;--mute:#86b0b8;--line:#1a5360}
+:root[data-theme=dune]{--bg:#241d16;--p:#2f261d;--p2:#3a2f24;--ink:#f3eadb;--mute:#b3a38c;--line:#4d3f30}
+*{box-sizing:inherit}html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 13px/1.3 Barlow,system-ui,sans-serif;min-height:100%}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:10px 18px;background:var(--p);border-bottom:2px solid var(--ink)}
+.t{font:700 22px/1 "Barlow Condensed";letter-spacing:.05em}
+.sum{color:var(--mute);font-size:13px}.sum b{color:var(--ink);font:600 16px "Barlow Condensed"}
+.clocks{margin-left:auto;display:flex;gap:16px;align-items:baseline}
+.clk b{font:600 20px/1 "Barlow Condensed";letter-spacing:.04em}.clk span{color:var(--mute);font-size:11px;margin-left:4px}
+.bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+button,select,input{font:inherit}
+button{font-weight:600;border:0;border-radius:5px;padding:5px 10px;background:var(--ink);color:var(--bg);cursor:pointer}
+button.g{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.d{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+button.r{background:var(--bad);color:#fff}
+:focus-visible{outline:2px solid var(--clean);outline-offset:1px}
+.mode{font:600 12px "Barlow Condensed";letter-spacing:.08em;padding:3px 8px;border:1px solid var(--line);border-radius:4px;color:var(--mute)}
+.mode.on{color:var(--ok);border-color:var(--ok)}
+main{display:grid;grid-template-columns:330px 1fr;gap:12px;padding:12px 18px;align-items:start}
+@media(max-width:860px){main{grid-template-columns:1fr;padding:10px}}
+.right{display:flex;flex-direction:column;gap:12px}
+section{background:var(--p);border:1px solid var(--line);border-radius:8px;padding:12px}
+h2{font:600 17px/1 "Barlow Condensed";letter-spacing:.05em;margin:0 0 8px;display:flex;justify-content:space-between;align-items:baseline}
+h2 span,h3 span{font:400 12px Barlow;color:var(--mute);letter-spacing:0}
+.lg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 4px 0 8px}
+.group{margin-bottom:10px}
+h3{font:600 13px "Barlow Condensed";letter-spacing:.06em;margin:0 0 5px;color:var(--mute);display:flex;justify-content:space-between}
+.chips{display:flex;flex-wrap:wrap;gap:4px;min-height:24px;align-content:flex-start;border-radius:5px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 7px;border-radius:4px;color:#0a111d;font-weight:600;font-size:12.5px;user-select:none;border:2px solid transparent;border-left:4px solid rgba(0,0,0,.3);line-height:1.25}
+.chip small{opacity:.6;font-size:10.5px;font-weight:600}
+.chip .loc{background:rgba(0,0,0,.18);border-radius:3px;padding:0 4px;opacity:1;color:#0a111d}
+.chip.engineer{background:var(--eng)}.chip.technician{background:var(--tech)}.chip.cleaner{background:var(--clean)}
+.adm .chip{cursor:grab}.chip.sel{border-color:#fff}.chip.away{opacity:.55}
+.chip button{all:unset;cursor:pointer;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.3);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;line-height:1;flex:none}.chip button:hover{background:rgba(0,0,0,.6)}.chip button:focus-visible{outline:2px solid #fff}
+.empty{color:var(--mute);font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:6px}
+.card{display:flex;gap:10px;align-items:flex-start;background:var(--p2);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+.hd{width:96px;flex:none;display:flex;flex-direction:column;gap:2px}
+.reg{font:700 18px/1 "Barlow Condensed";letter-spacing:.05em}
+.ty{font-size:10.5px;font-style:italic;color:var(--mute);line-height:1.1}
+.drop{flex:1;min-height:30px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;border-radius:5px;padding:2px}
+.drop.over,.chips.over{background:rgba(90,169,255,.16)}
+.pick .drop{outline:1px dashed var(--clean)}
+.x{background:transparent;color:var(--mute);padding:0 4px;font-size:16px;line-height:1;align-self:flex-start}
+.nil{padding:20px;text-align:center;color:var(--mute);grid-column:1/-1}
+dialog{border:1px solid var(--line);border-radius:8px;padding:20px;background:var(--p);color:var(--ink);width:min(400px,94vw);font-size:14px}
+dialog.w{width:min(660px,96vw)}
+dialog h2{font-size:20px}
+dialog::backdrop{background:rgba(3,7,14,.7)}
+label{display:block;font-size:12px;font-weight:600;color:var(--mute);margin:10px 0 4px}
+input,select{width:100%;padding:7px 9px;border-radius:5px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+select:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.f3{display:grid;grid-template-columns:1fr 120px 100px;gap:10px}
+.staff{max-height:46vh;overflow:auto;margin-top:12px;border-top:1px solid var(--line)}
+.sr{display:grid;grid-template-columns:1fr 120px 100px auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+@media(max-width:560px){.sr,.f3{grid-template-columns:1fr 1fr}}
+.bar select{width:auto;padding:4px 8px}
+.sub{color:var(--mute);margin:0 0 6px}
+</style></head>
+<body>
+<div class="top">
+ <span class="t">MANPOWER PLANNER</span>
+ <span class="mode" id="mode">VIEW ONLY</span><div class="bar" id="adminBar"></div>
+ <span class="sum" id="sum"></span>
+ <div class="clocks"><div class="clk"><b id="tLT"></b><span id="tDate"></span></div><div class="clk"><b id="tUTC"></b><span>UTC</span></div></div>
+</div>
+<main>
+ <section>
+  <h2>TEAM <span class="lg"><i style="background:var(--eng)"></i>Engineer<i style="background:var(--tech)"></i>Technician<i style="background:var(--clean)"></i>Cleaner</span></h2>
+  <div class="group"><h3>AVAILABLE <span id="cA"></span></h3><div class="chips" id="pool"></div></div>
+  <div class="group"><h3>ON LEAVE <span id="cL"></span></h3><div class="chips" id="leave"></div></div>
+ </section>
+ <div class="right"><section><h2>LINE MAINTENANCE <span id="hint"></span></h2><div class="grid" id="acLine"></div></section><section><h2>BASE PROJECTS</h2><div class="grid" id="acBase"></div></section></div>
+</main>
+
+<dialog id="dAc"><h2>ADD PROJECT</h2>
+ <label for="aReg">Registration</label><input id="aReg" placeholder="A6-XXX" autocomplete="off">
+ <label for="aMk">Manufacturer</label><select id="aMk"></select>
+ <label for="aTy">Aircraft type</label><select id="aTy"></select>
+ <label for="aWk">Work</label><select id="aWk"><option value="line">Line</option><option value="base">Base</option></select>
+ <div class="row"><button class="g" data-close>Cancel</button><button id="saveAc">Add project</button></div></dialog>
+<dialog id="dTeam" class="w"><h2>MANAGE TEAM</h2>
+ <p class="sub">Add, edit or remove personnel. Leave is set on the board by dragging a name to On leave.</p>
+ <div class="f3"><div><label for="pName">Name</label><input id="pName" placeholder="First and second name" autocomplete="off"></div>
+ <div><label for="pRole">Role</label><select id="pRole"><option value="engineer">Engineer</option><option value="technician">Technician</option><option value="cleaner">Cleaner</option></select></div>
+ <div><label for="pLic">Licence</label><select id="pLic"></select></div></div>
+ <div class="row"><button id="savePerson">Add to team</button></div>
+ <div class="staff" id="staff"></div>
+ <div class="row"><button class="g" data-close>Done</button></div></dialog>
+<dialog id="dLogin"><h2>ADMIN SIGN IN</h2><label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" autocomplete="off">
+ <p class="sub" id="pinNote" style="margin-top:8px">Default PIN is 1234. Change it after signing in.</p>
+ <div class="row"><button class="g" data-close>Cancel</button><button id="doLogin">Sign in</button></div></dialog>
+<dialog id="dPin"><h2>CHANGE PIN</h2><label for="npin">New PIN (4 to 8 digits)</label><input id="npin" type="password" inputmode="numeric" autocomplete="off">
+ <p class="sub" id="npNote" style="margin-top:8px"></p>
+ <div class="row"><button class="g" data-close>Cancel</button><button id="savePin">Save PIN</button></div></dialog>
+<dialog id="dConf"><h2>PLEASE CONFIRM</h2><p id="cMsg"></p><div class="row"><button class="g" data-close>Cancel</button><button class="r" id="cOk">Remove</button></div></dialog>
+
+<script>
+const KEY='planner.v5',THEMES=[['midnight','Midnight'],['graphite','Graphite'],['ocean','Ocean'],['dune','Dune'],['daylight','Daylight']],RO={engineer:0,technician:1,cleaner:2};
+const $=i=>document.getElementById(i),uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today=()=>{const n=new Date();return n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate()};
+let S,admin=false,sel=null,onOk=null;
+function seed(){
+ const E=[['Omar Mansoori','B1'],['Sara Lawson','B2'],['James Doyle','B1/B2'],['Khalid Rashid','B1'],['Priya Nair','B2'],['Daniel Okafor','B1'],['Yusuf Hamdan','B1/B2'],['Elena Petrova','B2'],['Tariq Aziz','B1'],['Marcus Webb','B1']].map(x=>({name:x[0],role:'engineer',lic:x[1]}));
+ const T=['Ravi Menon','Ali Zaabi','Faisal Qureshi','Arjun Pillai','Hamza Sheikh','Kevin Dsouza','Imran Baig','Rashid Almaz','Joseph Mathew','Bilal Ahmed','Sandeep Rao','Walid Samir'].map(n=>({name:n,role:'technician',lic:''}));
+ const C=['Noor Siddiqui','Maria Santos','Dinesh Kumar','Fatima Yusuf','Rohan Das'].map(n=>({name:n,role:'cleaner',lic:''}));
+ const P=[...E,...T,...C].map(p=>({id:uid(),...p}));
+ const A=[['A6-ALM','line',[0,10,22]],['A6-FLX','line',[1,11]],['A6-SKY','line',[2,12]],['VP-BDX','base',[3,14,15,23]],['N512GX','base',[4,16,17]],['M-ARCH','line',[5,18]],['9H-VJV','line',[6]],['T7-KHZ','base',[7,20,24]],['P4-MOV','line',[8]],['OE-LSH','line',[]],['D-ABTR','base',[]],['HZ-AB7','line',[]],['A6-PRS','base',[]],['VQ-BGM','line',[]],['LX-MMM','line',[]]];
+ return{pin:'1234',theme:'midnight',people:P,days:{[today()]:{leave:[9,21,26].map(i=>P[i].id),aircraft:A.map((a,n)=>({id:uid(),reg:a[0],kind:a[1],type:['Global 7500','Challenger 350','Falcon 7X','G650','Legacy 650','Praetor 600','Phenom 300','Global Express','Challenger 605','Falcon 2000','Hawker 800XP','G450','Learjet 60XR','Falcon 900','G280'][n],crew:a[2].map(i=>P[i].id)}))}}}}
+function load(){try{const r=localStorage.getItem(KEY);S=r?JSON.parse(r):seed()}catch(e){S=seed()}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const day=()=>S.days[today()]||(S.days[today()]={leave:[],aircraft:[]});
+const per=id=>S.people.find(p=>p.id===id);
+const srt=a=>[...a].sort((x,y)=>RO[x.role]-RO[y.role]||x.name.localeCompare(y.name));
+const ask=(m,f)=>{$('cMsg').textContent=m;onOk=f;$('dConf').showModal()};
+function unassign(id){day().aircraft.forEach(a=>a.crew=a.crew.filter(x=>x!==id))}
+function assign(pid,aid){const D=day();D.leave=D.leave.filter(x=>x!==pid);unassign(pid);const a=D.aircraft.find(x=>x.id===aid);if(a)a.crew.push(pid);sel=null;save();render()}
+function toggleLeave(id){const D=day();if(D.leave.includes(id))D.leave=D.leave.filter(x=>x!==id);else{D.leave.push(id);unassign(id)}sel=null;save();render()}
+function chip(p,o={}){
+ const d=document.createElement('span');d.className='chip '+p.role+(o.away?' away':'')+(sel===p.id?' sel':'');
+ d.innerHTML=esc(p.name)+(p.role==='engineer'&&p.lic?' <small>'+esc(p.lic)+'</small>':'')+(o.loc?' <small class="loc">'+esc(o.loc)+'</small>':'');
+ if(admin){d.draggable=true;d.tabIndex=0;
+  d.ondragstart=e=>e.dataTransfer.setData('text/plain',p.id);
+  d.onclick=()=>{sel=sel===p.id?null:p.id;render()};
+  d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};
+  if(o.btn){const b=document.createElement('button');b.textContent=o.btn[0];b.title=o.btn[1];b.onclick=e=>{e.stopPropagation();o.btn[2]()};d.appendChild(b)}}
+ return d}
+function dz(el,fn){el.ondragover=e=>{e.preventDefault();el.classList.add('over')};el.ondragleave=()=>el.classList.remove('over');el.ondrop=e=>{e.preventDefault();el.classList.remove('over');fn(e.dataTransfer.getData('text/plain'))}}
+const own=(e,el)=>e.target===el||e.target.classList.contains('empty');
+function render(){
+ document.documentElement.dataset.theme=S.theme||'midnight';
+ document.body.classList.toggle('adm',admin);document.body.classList.toggle('pick',admin&&!!sel);
+ $('mode').textContent=admin?'ADMIN':'VIEW ONLY';$('mode').classList.toggle('on',admin);
+ const bar=$('adminBar');bar.innerHTML='';
+ const mk=(t,f,g)=>{const b=document.createElement('button');b.textContent=t;b.onclick=f;if(g)b.className='g';bar.appendChild(b)};
+ if(admin){mk('Add project',()=>{$('dAc').showModal();$('aReg').focus()});mk('Manage team',()=>{teamList();$('dTeam').showModal()});mk('Change PIN',()=>{$('npin').value='';$('npNote').textContent='';$('dPin').showModal()},1);mk('Sign out',()=>{admin=false;sel=null;render()},1);
+  const s=document.createElement('select');s.setAttribute('aria-label','Colour scheme');s.innerHTML=THEMES.map(t=>'<option value="'+t[0]+'"'+(S.theme===t[0]?' selected':'')+'>'+t[1]+'</option>').join('');s.onchange=()=>{S.theme=s.value;save();render()};bar.appendChild(s)}
+ else mk('Admin sign in',()=>{$('pin').value='';$('dLogin').showModal()},1);
+ const D=day(),loc={};D.aircraft.forEach(a=>a.crew.forEach(id=>loc[id]=a.reg));
+ const on=S.people.filter(p=>!D.leave.includes(p.id)),lv=srt(S.people.filter(p=>D.leave.includes(p.id))),free=srt(on.filter(p=>!loc[p.id]));
+ $('sum').innerHTML='<b>'+D.aircraft.length+'</b> projects &nbsp;<b>'+on.length+'</b> on duty &nbsp;<b>'+lv.length+'</b> on leave';
+ const fill=(el,L,o,msg)=>{el.innerHTML='';L.forEach(p=>el.appendChild(chip(p,o?o(p):{})));if(!L.length)el.innerHTML='<span class="empty">'+msg+'</span>'};
+ fill($('pool'),free,0,on.length?'Everyone is assigned.':'No staff yet.');
+
+ fill($('leave'),lv,p=>({away:1,btn:['↺','Return from leave',()=>toggleLeave(p.id)]}),'No one is on leave.');
+ const pool=$('pool'),lc=$('leave');
+ dz(pool,id=>{if(D.leave.includes(id))toggleLeave(id);else{unassign(id);save();render()}});
+ dz(lc,id=>{if(per(id)&&!D.leave.includes(id))toggleLeave(id)});
+ pool.onclick=e=>{if(admin&&sel&&own(e,pool)){if(D.leave.includes(sel))toggleLeave(sel);else{unassign(sel);sel=null;save();render()}}};
+ lc.onclick=e=>{if(admin&&sel&&own(e,lc)&&!D.leave.includes(sel))toggleLeave(sel)};
+ $('cA').textContent=free.length;$('cL').textContent=lv.length||'';
+ $('hint').textContent=admin?'Drag names onto a project, or tap a name then a project':'';
+ ['line','base'].forEach(k=>{const g=$(k==='base'?'acBase':'acLine');g.innerHTML='';const L=D.aircraft.filter(a=>(a.kind==='base')===(k==='base'));
+ if(!L.length)g.innerHTML='<div class="nil">'+(admin?'Nothing here yet. Use “Add project”.':'No projects here yet.')+'</div>';
+ L.forEach(a=>{
+  const c=document.createElement('div');c.className='card';
+  c.innerHTML='<div class="hd"><div class="reg">'+esc(a.reg)+'</div>'+(a.type?'<div class="ty">'+esc(a.type)+'</div>':'')+'</div><div class="drop"></div>'+(admin?'<button class="x" title="Remove project" aria-label="Remove project">×</button>':'');
+  const dr=c.querySelector('.drop');srt(a.crew.map(per).filter(Boolean)).forEach(p=>dr.appendChild(chip(p,{btn:['×','Unassign',()=>{unassign(p.id);save();render()}]})));
+  if(!a.crew.length)dr.innerHTML='<span class="empty">'+(admin?'Drop crew here':'No crew')+'</span>';
+  if(admin){dz(dr,id=>assign(id,a.id));dr.onclick=e=>{if(sel&&own(e,dr))assign(sel,a.id)};
+   c.querySelector('.x').onclick=()=>ask('Remove '+a.reg+' from the board? Its crew will become available.',()=>{D.aircraft=D.aircraft.filter(x=>x!==a);save();render()})}
+  g.appendChild(c)})})}
+const MFR={Bombardier:['Challenger 300','Challenger 350','Challenger 604','Challenger 605','Challenger 650','Global 5000','Global 6000','Global 7500','Global Express','Learjet 60XR','Learjet 75'],Embraer:['Phenom 100','Phenom 300','Legacy 450','Legacy 500','Legacy 600','Legacy 650','Praetor 500','Praetor 600','Lineage 1000'],Gulfstream:['G280','G450','G550','G650','G650ER','G700'],Dassault:['Falcon 900','Falcon 2000','Falcon 6X','Falcon 7X','Falcon 8X'],Hawker:['Hawker 400XP','Hawker 800XP','Hawker 850XP','Hawker 900XP','Hawker 4000']};
+function fillTy(){$('aTy').innerHTML=MFR[$('aMk').value].map(t=>'<option>'+t+'</option>').join('')}
+$('aMk').innerHTML=Object.keys(MFR).map(m=>'<option>'+m+'</option>').join('');$('aMk').onchange=fillTy;fillTy();
+const licOpts=(role,v)=>role==='engineer'?['B1','B2','B1/B2'].map(l=>'<option'+(v===l?' selected':'')+'>'+l+'</option>').join(''):'<option value="">n/a</option>';
+function teamList(){const h=$('staff');h.innerHTML=S.people.length?'':'<p class="empty">No staff yet.</p>';
+ srt(S.people).forEach(p=>{const r=document.createElement('div');r.className='sr';
+  r.innerHTML='<input value="'+esc(p.name)+'" aria-label="Name"><select aria-label="Role">'+[['engineer','Engineer'],['technician','Technician'],['cleaner','Cleaner']].map(k=>'<option value="'+k[0]+'"'+(p.role===k[0]?' selected':'')+'>'+k[1]+'</option>').join('')+'</select><select aria-label="Licence"'+(p.role==='engineer'?'':' disabled')+'>'+licOpts(p.role,p.lic)+'</select><button class="d">Remove</button>';
+  const i=r.querySelector('input'),[s1,s2]=r.querySelectorAll('select');
+  i.onchange=()=>{const v=i.value.trim().replace(/\s+/g,' ');if(v){p.name=v;save();render()}else i.value=p.name};
+  s1.onchange=()=>{p.role=s1.value;p.lic=p.role==='engineer'?(p.lic||'B1'):'';save();render();teamList()};
+  s2.onchange=()=>{p.lic=s2.value;save();render()};
+  r.querySelector('button').onclick=()=>ask('Remove '+p.name+' from the team permanently?',()=>{S.people=S.people.filter(x=>x!==p);Object.values(S.days).forEach(d=>{d.leave=d.leave.filter(x=>x!==p.id);d.aircraft.forEach(a=>a.crew=a.crew.filter(x=>x!==p.id))});save();render();teamList()});
+  h.appendChild(r)})}
+function newLic(){const e=$('pRole').value==='engineer';$('pLic').innerHTML=licOpts($('pRole').value,'B1');$('pLic').disabled=!e}
+$('pRole').onchange=newLic;newLic();
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+$('cOk').onclick=()=>{$('dConf').close();if(onOk)onOk();onOk=null};
+$('doLogin').onclick=()=>{if($('pin').value===S.pin){admin=true;$('dLogin').close();render()}else $('pinNote').textContent='Wrong PIN. Try again.'};
+$('pin').onkeydown=e=>{if(e.key==='Enter')$('doLogin').click()};
+$('savePin').onclick=()=>{const n=$('npin').value;if(/^\d{4,8}$/.test(n)){S.pin=n;save();$('dPin').close()}else $('npNote').textContent='PIN must be 4 to 8 digits.'};
+$('savePerson').onclick=()=>{const n=$('pName').value.trim().replace(/\s+/g,' ');if(!n)return;const r=$('pRole').value;S.people.push({id:uid(),name:n,role:r,lic:r==='engineer'?$('pLic').value:''});$('pName').value='';save();render();teamList()};
+$('saveAc').onclick=()=>{const r=$('aReg').value.trim().toUpperCase();if(!r)return;day().aircraft.push({id:uid(),reg:r,kind:$('aWk').value,mk:$('aMk').value,type:$('aTy').value,crew:[]});$('aReg').value='';save();$('dAc').close();render()};
+function tick(){const n=new Date(),f={hour:'2-digit',minute:'2-digit',hour12:false};$('tLT').textContent=n.toLocaleTimeString([],f);$('tUTC').textContent=n.toLocaleTimeString([],{...f,timeZone:'UTC'});$('tDate').textContent=n.toLocaleDateString([],{weekday:'short',day:'numeric',month:'short'})}
+load();save();render();tick();setInterval(tick,15000);
+window.addEventListener('storage',()=>{if(!admin){load();render()}});setInterval(()=>{if(!admin){load();render()}},30000);
+</script></body></html>
