@@ -60,6 +60,10 @@ dialog::backdrop{background:rgba(3,7,14,.7)}
 label{display:block;font-size:12px;font-weight:600;color:var(--mute);margin:10px 0 4px}
 input,select{width:100%;padding:7px 9px;border-radius:5px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 select:disabled{opacity:.4;cursor:not-allowed}
+textarea{width:100%;padding:7px 9px;border-radius:5px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:12px/1.4 monospace}
+.gate{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}.gate[hidden]{display:none}
+.gcard{background:var(--p);border:1px solid var(--line);border-radius:8px;padding:24px;width:min(360px,100%)}.gcard h1{font:700 26px "Barlow Condensed";letter-spacing:.05em;margin:0 0 4px}
+.ar{display:grid;grid-template-columns:1fr 1fr 130px auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}@media(max-width:560px){.ar{grid-template-columns:1fr 1fr}}
 .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
 .f3{display:grid;grid-template-columns:1fr 120px 100px;gap:10px}
 .staff{max-height:46vh;overflow:auto;margin-top:12px;border-top:1px solid var(--line)}
@@ -67,6 +71,7 @@ select:disabled{opacity:.4;cursor:not-allowed}
 @media(max-width:560px){.sr,.f3{grid-template-columns:1fr 1fr}}
 .bar select{width:auto;padding:4px 8px}
 .sub{color:var(--mute);margin:0 0 6px}
+.toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:40;background:var(--ink);color:var(--bg);font:600 14px Barlow;padding:10px 18px;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.5);max-width:92vw;text-align:center}.toast[hidden]{display:none}
 </style></head>
 <body>
 <div class="top">
@@ -98,83 +103,95 @@ select:disabled{opacity:.4;cursor:not-allowed}
  <div class="row"><button id="savePerson">Add to team</button></div>
  <div class="staff" id="staff"></div>
  <div class="row"><button class="g" data-close>Done</button></div></dialog>
-<dialog id="dLogin"><h2>ADMIN SIGN IN</h2><label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" autocomplete="off">
- <p class="sub" id="pinNote" style="margin-top:8px">Default PIN is 1234. Change it after signing in.</p>
- <div class="row"><button class="g" data-close>Cancel</button><button id="doLogin">Sign in</button></div></dialog>
-<dialog id="dPin"><h2>CHANGE PIN</h2><label for="npin">New PIN (4 to 8 digits)</label><input id="npin" type="password" inputmode="numeric" autocomplete="off">
- <p class="sub" id="npNote" style="margin-top:8px"></p>
- <div class="row"><button class="g" data-close>Cancel</button><button id="savePin">Save PIN</button></div></dialog>
+<div class="toast" id="toast" role="alert" hidden></div>
+<div class="gate" id="gate"><div class="gcard"><h1>MANPOWER PLANNER</h1><p class="sub">Sign in to continue</p>
+ <label for="lu">Username</label><input id="lu" autocomplete="username" autocapitalize="off">
+ <label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password">
+ <label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" id="lk" style="width:auto"> Keep me signed in on this device</label>
+ <p class="sub" id="lErr" style="color:var(--bad);margin:10px 0 0"></p>
+ <div class="row"><button id="lGo">Sign in</button></div></div></div>
+<dialog id="dAcc" class="w"><h2>LOGINS</h2><p class="sub">Passwords are issued by the admin. Give each person their username and password directly.</p>
+ <label style="display:flex;gap:8px;align-items:center;font-weight:500;margin:0 0 8px"><input type="checkbox" id="accShow" style="width:auto"> Show passwords</label>
+ <div class="staff" id="accList"></div><p class="sub" id="accNote" style="margin-top:8px"></p>
+ <div class="row"><button class="g" data-close>Close</button></div></dialog>
+<dialog id="dBk" class="w"><h2>BACKUP</h2><p class="sub">Save a copy of all data, or restore from one.</p>
+ <div class="row" style="justify-content:flex-start;margin:0 0 10px"><button id="bkDl">Download backup</button><button class="g" id="bkCp">Copy</button><button class="g" id="bkFile">Load file</button></div>
+ <input type="file" id="bkIn" accept=".json,application/json" hidden>
+ <textarea id="bkTx" rows="8" aria-label="Backup data"></textarea><p class="sub" id="bkNote" style="margin-top:8px"></p>
+ <div class="row"><button class="g" data-close>Close</button><button class="d" id="bkRs">Restore from text</button></div></dialog>
 <dialog id="dConf"><h2>PLEASE CONFIRM</h2><p id="cMsg"></p><div class="row"><button class="g" data-close>Cancel</button><button class="r" id="cOk">Remove</button></div></dialog>
 
 <script>
-const KEY='planner.v5',THEMES=[['midnight','Midnight'],['graphite','Graphite'],['ocean','Ocean'],['dune','Dune'],['daylight','Daylight']],RO={engineer:0,technician:1,cleaner:2};
-const $=i=>document.getElementById(i),uid=()=>Math.random().toString(36).slice(2,9);
+const API='api.php',THEMES=[['midnight','Midnight'],['graphite','Graphite'],['ocean','Ocean'],['dune','Dune'],['daylight','Daylight']],RO={engineer:0,technician:1,cleaner:2};
+const MFR={Bombardier:['Challenger 300','Challenger 350','Challenger 604','Challenger 605','Challenger 650','Global 5000','Global 6000','Global 7500','Global Express','Learjet 60XR','Learjet 75'],Embraer:['Phenom 100','Phenom 300','Legacy 450','Legacy 500','Legacy 600','Legacy 650','Praetor 500','Praetor 600','Lineage 1000'],Gulfstream:['G280','G450','G550','G650','G650ER','G700'],Dassault:['Falcon 900','Falcon 2000','Falcon 6X','Falcon 7X','Falcon 8X'],Hawker:['Hawker 400XP','Hawker 800XP','Hawker 850XP','Hawker 900XP','Hawker 4000']};
+const $=i=>document.getElementById(i),uid=()=>Math.random().toString(36).slice(2,10);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const today=()=>{const n=new Date();return n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate()};
-let S,admin=false,sel=null,onOk=null;
-function seed(){
- const E=[['Omar Mansoori','B1'],['Sara Lawson','B2'],['James Doyle','B1/B2'],['Khalid Rashid','B1'],['Priya Nair','B2'],['Daniel Okafor','B1'],['Yusuf Hamdan','B1/B2'],['Elena Petrova','B2'],['Tariq Aziz','B1'],['Marcus Webb','B1']].map(x=>({name:x[0],role:'engineer',lic:x[1]}));
- const T=['Ravi Menon','Ali Zaabi','Faisal Qureshi','Arjun Pillai','Hamza Sheikh','Kevin Dsouza','Imran Baig','Rashid Almaz','Joseph Mathew','Bilal Ahmed','Sandeep Rao','Walid Samir'].map(n=>({name:n,role:'technician',lic:''}));
- const C=['Noor Siddiqui','Maria Santos','Dinesh Kumar','Fatima Yusuf','Rohan Das'].map(n=>({name:n,role:'cleaner',lic:''}));
- const P=[...E,...T,...C].map(p=>({id:uid(),...p}));
- const A=[['A6-ALM','line',[0,10,22]],['A6-FLX','line',[1,11]],['A6-SKY','line',[2,12]],['VP-BDX','base',[3,14,15,23]],['N512GX','base',[4,16,17]],['M-ARCH','line',[5,18]],['9H-VJV','line',[6]],['T7-KHZ','base',[7,20,24]],['P4-MOV','line',[8]],['OE-LSH','line',[]],['D-ABTR','base',[]],['HZ-AB7','line',[]],['A6-PRS','base',[]],['VQ-BGM','line',[]],['LX-MMM','line',[]]];
- return{pin:'1234',theme:'midnight',people:P,days:{[today()]:{leave:[9,21,26].map(i=>P[i].id),aircraft:A.map((a,n)=>({id:uid(),reg:a[0],kind:a[1],type:['Global 7500','Challenger 350','Falcon 7X','G650','Legacy 650','Praetor 600','Phenom 300','Global Express','Challenger 605','Falcon 2000','Hawker 800XP','G450','Learjet 60XR','Falcon 900','G280'][n],crew:a[2].map(i=>P[i].id)}))}}}}
-function load(){try{const r=localStorage.getItem(KEY);S=r?JSON.parse(r):seed()}catch(e){S=seed()}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const pad=n=>String(n).padStart(2,'0');
+const today=()=>{const n=new Date();return n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate())};
+const rnd=()=>String(100000+crypto.getRandomValues(new Uint32Array(1))[0]%900000);
+let S={rev:0,theme:'midnight',people:[],days:{}},admin=false,sup=false,me=null,sel=null,onOk=null,drag=false,busy=false,again=false,off=false,tt;
+async function api(a,d){try{const r=await fetch(API,{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-Requested-With':'planner'},body:JSON.stringify({...d,a})});if(r.status===401)return{err:'auth'};return await r.json()}catch(e){return{err:'offline'}}}
+function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,4500)}
+function apply(st){S.rev=st.rev;S.theme=st.theme||'midnight';S.people=st.people||[];S.days=st.days||{}}
 const day=()=>S.days[today()]||(S.days[today()]={leave:[],aircraft:[]});
 const per=id=>S.people.find(p=>p.id===id);
 const srt=a=>[...a].sort((x,y)=>RO[x.role]-RO[y.role]||x.name.localeCompare(y.name));
-const ask=(m,f)=>{$('cMsg').textContent=m;onOk=f;$('dConf').showModal()};
+const ask=(m,f,b)=>{$('cMsg').textContent=m;$('cOk').textContent=b||'Remove';onOk=f;$('dConf').showModal()};
+function save(){if(!admin)return;again=true;flush()}
+async function flush(){if(busy)return;busy=true;
+ try{while(again){again=false;const r=await api('save',{rev:S.rev,state:{people:S.people,days:S.days,theme:S.theme}});
+  if(r.err==='auth'){signOut(true);break}
+  if(r.conflict){apply(r.state);render();toast('The board was changed by someone else. Please repeat your last change.');again=false;break}
+  if(r.ok)S.rev=r.rev;else{toast('Could not save. Check the connection.');break}}}
+ finally{busy=false}}
+async function poll(){if(!me||drag||busy||document.hidden)return;const r=await api('poll',{rev:S.rev});
+ if(r.err==='auth'){signOut(true);return}
+ if(r.err){if(!off){off=true;toast('Connection lost. Retrying…')}return}
+ off=false;if(r.state&&!drag&&!busy){apply(r.state);render()}}
 function unassign(id){day().aircraft.forEach(a=>a.crew=a.crew.filter(x=>x!==id))}
 function assign(pid,aid){const D=day();D.leave=D.leave.filter(x=>x!==pid);unassign(pid);const a=D.aircraft.find(x=>x.id===aid);if(a)a.crew.push(pid);sel=null;save();render()}
 function toggleLeave(id){const D=day();if(D.leave.includes(id))D.leave=D.leave.filter(x=>x!==id);else{D.leave.push(id);unassign(id)}sel=null;save();render()}
 function chip(p,o={}){
  const d=document.createElement('span');d.className='chip '+p.role+(o.away?' away':'')+(sel===p.id?' sel':'');
- d.innerHTML=esc(p.name)+(p.role==='engineer'&&p.lic?' <small>'+esc(p.lic)+'</small>':'')+(o.loc?' <small class="loc">'+esc(o.loc)+'</small>':'');
+ d.innerHTML=esc(p.name)+(p.role==='engineer'&&p.lic?' <small>'+esc(p.lic)+'</small>':'');
  if(admin){d.draggable=true;d.tabIndex=0;
-  d.ondragstart=e=>e.dataTransfer.setData('text/plain',p.id);
+  d.ondragstart=e=>{drag=true;e.dataTransfer.setData('text/plain',p.id)};
   d.onclick=()=>{sel=sel===p.id?null:p.id;render()};
   d.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();d.click()}};
   if(o.btn){const b=document.createElement('button');b.textContent=o.btn[0];b.title=o.btn[1];b.onclick=e=>{e.stopPropagation();o.btn[2]()};d.appendChild(b)}}
  return d}
 function dz(el,fn){el.ondragover=e=>{e.preventDefault();el.classList.add('over')};el.ondragleave=()=>el.classList.remove('over');el.ondrop=e=>{e.preventDefault();el.classList.remove('over');fn(e.dataTransfer.getData('text/plain'))}}
 const own=(e,el)=>e.target===el||e.target.classList.contains('empty');
-function render(){
+function render(){$('gate').hidden=!!me;if(!me)return;
  document.documentElement.dataset.theme=S.theme||'midnight';
  document.body.classList.toggle('adm',admin);document.body.classList.toggle('pick',admin&&!!sel);
- $('mode').textContent=admin?'ADMIN':'VIEW ONLY';$('mode').classList.toggle('on',admin);
+ $('mode').textContent=(sup?'SUPERADMIN':admin?'ADMIN':'VIEW ONLY')+' · '+me.u;$('mode').classList.toggle('on',admin);
  const bar=$('adminBar');bar.innerHTML='';
  const mk=(t,f,g)=>{const b=document.createElement('button');b.textContent=t;b.onclick=f;if(g)b.className='g';bar.appendChild(b)};
- if(admin){mk('Add project',()=>{$('dAc').showModal();$('aReg').focus()});mk('Manage team',()=>{teamList();$('dTeam').showModal()});mk('Change PIN',()=>{$('npin').value='';$('npNote').textContent='';$('dPin').showModal()},1);mk('Sign out',()=>{admin=false;sel=null;render()},1);
+ if(admin){mk('Add project',()=>{$('dAc').showModal();$('aReg').focus()});mk('Manage team',()=>{teamList();$('dTeam').showModal()});mk('Logins',()=>{$('accNote').textContent='';accList();$('dAcc').showModal()},1);if(sup)mk('Backup',openBackup,1);mk('Sign out',()=>signOut(),1);
   const s=document.createElement('select');s.setAttribute('aria-label','Colour scheme');s.innerHTML=THEMES.map(t=>'<option value="'+t[0]+'"'+(S.theme===t[0]?' selected':'')+'>'+t[1]+'</option>').join('');s.onchange=()=>{S.theme=s.value;save();render()};bar.appendChild(s)}
- else mk('Admin sign in',()=>{$('pin').value='';$('dLogin').showModal()},1);
- const D=day(),loc={};D.aircraft.forEach(a=>a.crew.forEach(id=>loc[id]=a.reg));
- const on=S.people.filter(p=>!D.leave.includes(p.id)),lv=srt(S.people.filter(p=>D.leave.includes(p.id))),free=srt(on.filter(p=>!loc[p.id]));
+ else mk('Sign out',()=>signOut(),1);
+ const D=day(),on=S.people.filter(p=>!D.leave.includes(p.id)),used=new Set(D.aircraft.flatMap(a=>a.crew)),lv=srt(S.people.filter(p=>D.leave.includes(p.id))),free=srt(on.filter(p=>!used.has(p.id)));
  $('sum').innerHTML='<b>'+D.aircraft.length+'</b> projects &nbsp;<b>'+on.length+'</b> on duty &nbsp;<b>'+lv.length+'</b> on leave';
  const fill=(el,L,o,msg)=>{el.innerHTML='';L.forEach(p=>el.appendChild(chip(p,o?o(p):{})));if(!L.length)el.innerHTML='<span class="empty">'+msg+'</span>'};
  fill($('pool'),free,0,on.length?'Everyone is assigned.':'No staff yet.');
-
  fill($('leave'),lv,p=>({away:1,btn:['↺','Return from leave',()=>toggleLeave(p.id)]}),'No one is on leave.');
  const pool=$('pool'),lc=$('leave');
- dz(pool,id=>{if(D.leave.includes(id))toggleLeave(id);else{unassign(id);save();render()}});
- dz(lc,id=>{if(per(id)&&!D.leave.includes(id))toggleLeave(id)});
- pool.onclick=e=>{if(admin&&sel&&own(e,pool)){if(D.leave.includes(sel))toggleLeave(sel);else{unassign(sel);sel=null;save();render()}}};
- lc.onclick=e=>{if(admin&&sel&&own(e,lc)&&!D.leave.includes(sel))toggleLeave(sel)};
+ if(admin){dz(pool,id=>{if(D.leave.includes(id))toggleLeave(id);else{unassign(id);save();render()}});dz(lc,id=>{if(per(id)&&!D.leave.includes(id))toggleLeave(id)});
+  pool.onclick=e=>{if(sel&&own(e,pool)){if(D.leave.includes(sel))toggleLeave(sel);else{unassign(sel);sel=null;save();render()}}};
+  lc.onclick=e=>{if(sel&&own(e,lc)&&!D.leave.includes(sel))toggleLeave(sel)}}
  $('cA').textContent=free.length;$('cL').textContent=lv.length||'';
  $('hint').textContent=admin?'Drag names onto a project, or tap a name then a project':'';
  ['line','base'].forEach(k=>{const g=$(k==='base'?'acBase':'acLine');g.innerHTML='';const L=D.aircraft.filter(a=>(a.kind==='base')===(k==='base'));
- if(!L.length)g.innerHTML='<div class="nil">'+(admin?'Nothing here yet. Use “Add project”.':'No projects here yet.')+'</div>';
- L.forEach(a=>{
-  const c=document.createElement('div');c.className='card';
-  c.innerHTML='<div class="hd"><div class="reg">'+esc(a.reg)+'</div>'+(a.type?'<div class="ty">'+esc(a.type)+'</div>':'')+'</div><div class="drop"></div>'+(admin?'<button class="x" title="Remove project" aria-label="Remove project">×</button>':'');
-  const dr=c.querySelector('.drop');srt(a.crew.map(per).filter(Boolean)).forEach(p=>dr.appendChild(chip(p,{btn:['×','Unassign',()=>{unassign(p.id);save();render()}]})));
-  if(!a.crew.length)dr.innerHTML='<span class="empty">'+(admin?'Drop crew here':'No crew')+'</span>';
-  if(admin){dz(dr,id=>assign(id,a.id));dr.onclick=e=>{if(sel&&own(e,dr))assign(sel,a.id)};
-   c.querySelector('.x').onclick=()=>ask('Remove '+a.reg+' from the board? Its crew will become available.',()=>{D.aircraft=D.aircraft.filter(x=>x!==a);save();render()})}
-  g.appendChild(c)})})}
-const MFR={Bombardier:['Challenger 300','Challenger 350','Challenger 604','Challenger 605','Challenger 650','Global 5000','Global 6000','Global 7500','Global Express','Learjet 60XR','Learjet 75'],Embraer:['Phenom 100','Phenom 300','Legacy 450','Legacy 500','Legacy 600','Legacy 650','Praetor 500','Praetor 600','Lineage 1000'],Gulfstream:['G280','G450','G550','G650','G650ER','G700'],Dassault:['Falcon 900','Falcon 2000','Falcon 6X','Falcon 7X','Falcon 8X'],Hawker:['Hawker 400XP','Hawker 800XP','Hawker 850XP','Hawker 900XP','Hawker 4000']};
-function fillTy(){$('aTy').innerHTML=MFR[$('aMk').value].map(t=>'<option>'+t+'</option>').join('')}
-$('aMk').innerHTML=Object.keys(MFR).map(m=>'<option>'+m+'</option>').join('');$('aMk').onchange=fillTy;fillTy();
+  if(!L.length)g.innerHTML='<div class="nil">'+(admin?'Nothing here yet. Use “Add project”.':'No projects here yet.')+'</div>';
+  L.forEach(a=>{
+   const c=document.createElement('div');c.className='card';
+   c.innerHTML='<div class="hd"><div class="reg">'+esc(a.reg)+'</div>'+(a.type?'<div class="ty">'+esc(a.type)+'</div>':'')+'</div><div class="drop"></div>'+(admin?'<button class="x" title="Remove project" aria-label="Remove project">×</button>':'');
+   const dr=c.querySelector('.drop');srt(a.crew.map(per).filter(Boolean)).forEach(p=>dr.appendChild(chip(p,{btn:['×','Unassign',()=>{unassign(p.id);save();render()}]})));
+   if(!a.crew.length)dr.innerHTML='<span class="empty">'+(admin?'Drop crew here':'No crew')+'</span>';
+   if(admin){dz(dr,id=>assign(id,a.id));dr.onclick=e=>{if(sel&&own(e,dr))assign(sel,a.id)};
+    c.querySelector('.x').onclick=()=>ask('Remove '+a.reg+' from the board? Its crew will become available.',()=>{D.aircraft=D.aircraft.filter(x=>x!==a);save();render()})}
+   g.appendChild(c)})})}
 const licOpts=(role,v)=>role==='engineer'?['B1','B2','B1/B2'].map(l=>'<option'+(v===l?' selected':'')+'>'+l+'</option>').join(''):'<option value="">n/a</option>';
 function teamList(){const h=$('staff');h.innerHTML=S.people.length?'':'<p class="empty">No staff yet.</p>';
  srt(S.people).forEach(p=>{const r=document.createElement('div');r.className='sr';
@@ -183,18 +200,43 @@ function teamList(){const h=$('staff');h.innerHTML=S.people.length?'':'<p class=
   i.onchange=()=>{const v=i.value.trim().replace(/\s+/g,' ');if(v){p.name=v;save();render()}else i.value=p.name};
   s1.onchange=()=>{p.role=s1.value;p.lic=p.role==='engineer'?(p.lic||'B1'):'';save();render();teamList()};
   s2.onchange=()=>{p.lic=s2.value;save();render()};
-  r.querySelector('button').onclick=()=>ask('Remove '+p.name+' from the team permanently?',()=>{S.people=S.people.filter(x=>x!==p);Object.values(S.days).forEach(d=>{d.leave=d.leave.filter(x=>x!==p.id);d.aircraft.forEach(a=>a.crew=a.crew.filter(x=>x!==p.id))});save();render();teamList()});
+  r.querySelector('button').onclick=()=>ask('Remove '+p.name+' from the team permanently? Their login is deleted too.',()=>{S.people=S.people.filter(x=>x!==p);Object.values(S.days).forEach(d=>{d.leave=d.leave.filter(x=>x!==p.id);d.aircraft.forEach(a=>a.crew=a.crew.filter(x=>x!==p.id))});save();render();teamList()});
   h.appendChild(r)})}
+async function accList(){const h=$('accList'),r=await api('accounts',{});
+ if(r.err==='auth'){signOut(true);return}
+ if(!r.ok){$('accNote').textContent='Could not load logins.';return}
+ h.innerHTML='';
+ r.rows.forEach(x=>{const row=document.createElement('div');row.className='ar';
+  row.innerHTML='<b>'+esc(x.label)+'</b><span>'+esc(x.u)+'</span><input autocomplete="off" aria-label="Password for '+esc(x.label)+'"><button class="g">'+(x.set?'Set':'Reset')+'</button>';
+  const i=row.querySelector('input');i.type=(x.set||!$('accShow').checked)?'password':'text';i.value=x.p;if(x.set)i.placeholder='New password (min 8)';
+  const go=async v=>{const z=await api('setpw',{id:x.id,v});$('accNote').textContent=z.ok?'Password updated for '+x.label+'.':(z.msg||'Could not update.');accList()};
+  if(!x.set)i.onchange=()=>go(i.value);row.querySelector('button').onclick=()=>go(x.set?i.value:rnd());h.appendChild(row)})}
+async function openBackup(){if(!sup)return;const r=await api('export',{});if(!r.ok){toast('Could not load the backup.');return}$('bkTx').value=JSON.stringify(r.data,null,1);$('bkNote').textContent='';$('dBk').showModal()}
+$('bkDl').onclick=()=>{try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([$('bkTx').value],{type:'application/json'}));a.download='planner-backup-'+today()+'.json';a.click();$('bkNote').textContent='Backup downloaded.'}catch(e){$('bkNote').textContent='Download failed. Use Copy instead.'}};
+$('bkCp').onclick=async()=>{try{await navigator.clipboard.writeText($('bkTx').value);$('bkNote').textContent='Copied.'}catch(e){$('bkTx').select();$('bkNote').textContent='Select all and copy manually.'}};
+$('bkFile').onclick=()=>$('bkIn').click();
+$('bkIn').onchange=e=>{const f=e.target.files[0];if(f)f.text().then(t=>{$('bkTx').value=t;$('bkNote').textContent='File loaded. Press Restore to apply.'})};
+$('bkRs').onclick=()=>{if(!sup)return;let d;try{d=JSON.parse($('bkTx').value)}catch(e){}
+ if(!d||!Array.isArray(d.people)||typeof d.days!=='object'){$('bkNote').textContent='That is not a valid backup.';return}
+ ask('Replace all current data with this backup?',async()=>{const r=await api('import',{data:d});if(r.ok){apply(r.state);$('dBk').close();render()}else $('bkNote').textContent=r.msg||'Restore failed.'},'Restore')};
+function enter(r){me={u:r.u,role:r.role};admin=r.role!=='staff';sup=r.role==='super';apply(r.state);render()}
+async function login(){const u=$('lu').value.trim(),p=$('lp').value;if(!u||!p)return;
+ const r=await api('login',{u,p,keep:$('lk').checked});
+ if(!r.ok){$('lErr').textContent=r.msg||(r.err==='offline'?'Cannot reach the server.':'Wrong username or password.');return}
+ $('lp').value='';$('lErr').textContent='';enter(r)}
+async function signOut(expired){if(!expired)await api('logout',{});me=null;admin=false;sup=false;sel=null;$('lErr').textContent=expired===true?'Your session has ended. Please sign in again.':'';document.querySelectorAll('dialog[open]').forEach(d=>d.close());render()}
+$('lGo').onclick=login;$('lp').onkeydown=$('lu').onkeydown=e=>{if(e.key==='Enter')login()};
+$('accShow').onchange=accList;
 function newLic(){const e=$('pRole').value==='engineer';$('pLic').innerHTML=licOpts($('pRole').value,'B1');$('pLic').disabled=!e}
 $('pRole').onchange=newLic;newLic();
+function fillTy(){$('aTy').innerHTML=MFR[$('aMk').value].map(t=>'<option>'+t+'</option>').join('')}
+$('aMk').innerHTML=Object.keys(MFR).map(m=>'<option>'+m+'</option>').join('');$('aMk').onchange=fillTy;fillTy();
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
 $('cOk').onclick=()=>{$('dConf').close();if(onOk)onOk();onOk=null};
-$('doLogin').onclick=()=>{if($('pin').value===S.pin){admin=true;$('dLogin').close();render()}else $('pinNote').textContent='Wrong PIN. Try again.'};
-$('pin').onkeydown=e=>{if(e.key==='Enter')$('doLogin').click()};
-$('savePin').onclick=()=>{const n=$('npin').value;if(/^\d{4,8}$/.test(n)){S.pin=n;save();$('dPin').close()}else $('npNote').textContent='PIN must be 4 to 8 digits.'};
 $('savePerson').onclick=()=>{const n=$('pName').value.trim().replace(/\s+/g,' ');if(!n)return;const r=$('pRole').value;S.people.push({id:uid(),name:n,role:r,lic:r==='engineer'?$('pLic').value:''});$('pName').value='';save();render();teamList()};
 $('saveAc').onclick=()=>{const r=$('aReg').value.trim().toUpperCase();if(!r)return;day().aircraft.push({id:uid(),reg:r,kind:$('aWk').value,mk:$('aMk').value,type:$('aTy').value,crew:[]});$('aReg').value='';save();$('dAc').close();render()};
 function tick(){const n=new Date(),f={hour:'2-digit',minute:'2-digit',hour12:false};$('tLT').textContent=n.toLocaleTimeString([],f);$('tUTC').textContent=n.toLocaleTimeString([],{...f,timeZone:'UTC'});$('tDate').textContent=n.toLocaleDateString([],{weekday:'short',day:'numeric',month:'short'})}
-load();save();render();tick();setInterval(tick,15000);
-window.addEventListener('storage',()=>{if(!admin){load();render()}});setInterval(()=>{if(!admin){load();render()}},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
+document.addEventListener('dragend',()=>drag=false);document.addEventListener('drop',()=>drag=false);
+(async()=>{const r=await api('me',{});if(r&&r.ok)enter(r);else render();tick();setInterval(tick,15000);setInterval(poll,2000)})();
 </script></body></html>
